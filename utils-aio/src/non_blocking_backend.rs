@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::channel::oneshot;
 
-pub type Backend = RayonBackend;
+pub type Backend = SingleCPUBackend;
 
 /// Allows to spawn a closure on a thread outside of the async runtime
 ///
@@ -23,6 +23,17 @@ impl NonBlockingBackend for RayonBackend {
             _ = sender.send(closure());
         });
 
+        receiver.await.expect("channel should not be canceled")
+    }
+}
+
+pub struct SingleCPUBackend;
+
+#[async_trait]
+impl NonBlockingBackend for SingleCPUBackend {
+    async fn spawn<F: FnOnce() -> T + Send + 'static, T: Send + 'static>(closure: F) -> T {
+        let (sender, receiver) = oneshot::channel();
+        _ = sender.send(closure());
         receiver.await.expect("channel should not be canceled")
     }
 }
